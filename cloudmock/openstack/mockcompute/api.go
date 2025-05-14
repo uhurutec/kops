@@ -17,6 +17,7 @@ limitations under the License.
 package mockcompute
 
 import (
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/instanceactions"
 	"net/http/httptest"
 	"sync"
 
@@ -35,12 +36,13 @@ type MockClient struct {
 	openstack.MockOpenstackServer
 	mutex sync.Mutex
 
-	serverGroups  map[string]servergroups.ServerGroup
-	servers       map[string]servers.Server
-	keyPairs      map[string]keypairs.KeyPair
-	images        map[string]images.Image
-	flavors       map[string]flavors.Flavor
-	networkClient *gophercloud.ServiceClient
+	serverGroups    map[string]servergroups.ServerGroup
+	servers         map[string]servers.Server
+	keyPairs        map[string]keypairs.KeyPair
+	images          map[string]images.Image
+	flavors         map[string]flavors.Flavor
+	instanceActions map[string]instanceactions.InstanceAction
+	networkClient   *gophercloud.ServiceClient
 }
 
 // CreateClient will create a new mock networking client
@@ -52,6 +54,7 @@ func CreateClient(networkClient *gophercloud.ServiceClient) *MockClient {
 	m.mockServers()
 	m.mockKeyPairs()
 	m.mockFlavors()
+	m.mockInstanceActions()
 	m.Server = httptest.NewServer(m.Mux)
 	m.networkClient = networkClient
 	return m
