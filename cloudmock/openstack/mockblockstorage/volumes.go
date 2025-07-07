@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type volumeListResponse struct {
@@ -91,16 +92,17 @@ func MarshalVolumes(volumes []volumes.Volume) ([]byte, error) {
 func MarshalJSON(r *volumes.Volume) ([]byte, error) {
 	type s struct {
 		volumes.Volume
-		CreatedAt gophercloud.JSONRFC3339MilliNoZ `json:"created_at"`
-		UpdatedAt gophercloud.JSONRFC3339MilliNoZ `json:"updated_at"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 
 	s1 := s{
 		*r,
-		gophercloud.JSONRFC3339MilliNoZ(r.CreatedAt),
-		gophercloud.JSONRFC3339MilliNoZ(r.UpdatedAt),
+		r.CreatedAt,
+		r.UpdatedAt,
 	}
 
+	s1.
 	res, err := json.Marshal(s1)
 	if err != nil {
 		return nil, err
