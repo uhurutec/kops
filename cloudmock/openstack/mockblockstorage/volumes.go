@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
 	"net/http"
 	"net/url"
@@ -75,17 +76,47 @@ func (m *MockClient) mockVolumes(mockTimer MockTimer) {
 	m.Mux.HandleFunc("/volumes", handler)
 }
 
+func MarshalVolumes(volumes []volumes.Volume) ([]byte, error) {
+	var res []byte
+	for _, v := range volumes {
+		b, err := MarshalJSON(&v)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, b...)
+	}
+	return res, nil
+}
+
+func MarshalJSON(r *volumes.Volume) ([]byte, error) {
+	type s struct {
+		volumes.Volume
+		CreatedAt gophercloud.JSONRFC3339MilliNoZ `json:"created_at"`
+		UpdatedAt gophercloud.JSONRFC3339MilliNoZ `json:"updated_at"`
+	}
+
+	s1 := s{
+		*r,
+		gophercloud.JSONRFC3339MilliNoZ(r.CreatedAt),
+		gophercloud.JSONRFC3339MilliNoZ(r.UpdatedAt),
+	}
+
+	res, err := json.Marshal(s1)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 func (m *MockClient) listVolumes(w http.ResponseWriter, vals url.Values) {
 	w.WriteHeader(http.StatusOK)
 
 	vols := filterVolumes(m.volumes, vals)
 
-	resp := volumeListResponse{
-		Volumes: vols,
-	}
-	respB, err := json.Marshal(resp)
+	respB, err := MarshalVolumes(vols)
 	if err != nil {
-		panic(fmt.Sprintf("failed to marshal %+v", resp))
+		panic(fmt.Sprintf("failed to marshal %+v", vols))
 	}
 	_, err = w.Write(respB)
 	if err != nil {
