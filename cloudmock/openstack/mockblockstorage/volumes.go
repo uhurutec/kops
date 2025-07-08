@@ -26,12 +26,22 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
+
+type JSONRFC3339MilliNoZ gophercloud.JSONRFC3339MilliNoZ
+
+func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
+	x := time.Time(*l)
+	res := x.String()
+	res = strings.TrimSuffix(res, "Z")
+	return json.Marshal(res)
+}
 
 type ExtendedVolumeType struct {
 	volumes.Volume
-	CreatedAt gophercloud.JSONRFC3339MilliNoZ `json:"created_at"`
-	UpdatedAt gophercloud.JSONRFC3339MilliNoZ `json:"updated_at"`
+	CreatedAt JSONRFC3339MilliNoZ `json:"created_at"`
+	UpdatedAt JSONRFC3339MilliNoZ `json:"updated_at"`
 }
 
 type volumeListResponse struct {
@@ -106,8 +116,8 @@ func AddMocksReplaceVolumes(r *volumes.Volume) (ExtendedVolumeType, error) {
 
 	newVol := ExtendedVolumeType{
 		*r,
-		gophercloud.JSONRFC3339MilliNoZ(r.CreatedAt),
-		gophercloud.JSONRFC3339MilliNoZ(r.UpdatedAt),
+		JSONRFC3339MilliNoZ(r.CreatedAt),
+		JSONRFC3339MilliNoZ(r.UpdatedAt),
 	}
 	return newVol, nil
 }
