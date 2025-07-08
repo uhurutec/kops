@@ -46,7 +46,7 @@ type volumeUpdateRequest struct {
 
 func (m *MockClient) mockVolumes(mockTimer MockTimer) {
 	re := regexp.MustCompile(`/volumes/?`)
-	timer := mockTimer
+	//timer := mockTimer
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -63,7 +63,7 @@ func (m *MockClient) mockVolumes(mockTimer MockTimer) {
 				m.getVolume(w, volID)
 			}
 		case http.MethodPost:
-			m.createVolume(w, r, timer)
+			m.createVolume(w, r, mockTimer)
 		case http.MethodPut:
 			m.updateVolume(w, r, volID)
 		case http.MethodDelete:
@@ -114,7 +114,8 @@ func (m *MockClient) listVolumes(w http.ResponseWriter, vals url.Values) {
 
 	vols := filterVolumes(m.volumes, vals)
 
-	respB, err := MarshalVolumes(vols)
+	respB, err := json.Marshal(vols)
+	//	respB, err := MarshalVolumes(vols)
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal %+v", vols))
 	}
