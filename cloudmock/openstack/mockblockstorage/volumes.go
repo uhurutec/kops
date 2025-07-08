@@ -31,11 +31,12 @@ import (
 
 type JSONRFC3339MilliNoZ gophercloud.JSONRFC3339MilliNoZ
 
+const RFC3339NoZ = "2006-01-02T15:04:05"
+
 func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
-	x := time.Time(*l)
-	res := x.String()
-	res = strings.TrimSuffix(res, "Z")
-	return json.Marshal(res)
+	t := time.Time(*l)
+	s := t.Format(RFC3339NoZ)
+	return json.Marshal(s)
 }
 
 type ExtendedVolumeType struct {
