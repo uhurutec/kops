@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gophercloud/gophercloud/v2"
-	volumes "github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -50,7 +50,7 @@ type volumeListResponse struct {
 }
 
 type volumeGetResponse struct {
-	Volume volumes.Volume `json:"volume"`
+	Volume ExtendedVolumeType `json:"volume"`
 }
 
 type volumeCreateRequest struct {
@@ -63,7 +63,6 @@ type volumeUpdateRequest struct {
 
 func (m *MockClient) mockVolumes(mockTimer MockTimer) {
 	re := regexp.MustCompile(`/volumes/?`)
-	//timer := mockTimer
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -91,6 +90,24 @@ func (m *MockClient) mockVolumes(mockTimer MockTimer) {
 	}
 	m.Mux.HandleFunc("/volumes/", handler)
 	m.Mux.HandleFunc("/volumes", handler)
+}
+
+func MarshalVolume(volume volumes.Volume) ([]byte, error) {
+	var res []byte
+	var newVolume volumeGetResponse
+
+	newVol, err := AddMocksReplaceVolumes(&volume)
+	if err != nil {
+		return nil, err
+	}
+
+	newVolume.Volume = newVol
+	res, err = json.Marshal(newVolume)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func MarshalVolumes(volumes []volumes.Volume) ([]byte, error) {
@@ -140,12 +157,9 @@ func (m *MockClient) listVolumes(w http.ResponseWriter, vals url.Values) {
 
 func (m *MockClient) getVolume(w http.ResponseWriter, volumeID string) {
 	if vol, ok := m.volumes[volumeID]; ok {
-		resp := volumeGetResponse{
-			Volume: vol,
-		}
-		respB, err := json.Marshal(resp)
+		respB, err := json.Marshal(vol)
 		if err != nil {
-			panic(fmt.Sprintf("failed to marshal %+v", resp))
+			panic(fmt.Sprintf("failed to marshal %+v", vol))
 		}
 		_, err = w.Write(respB)
 		if err != nil {
@@ -201,12 +215,9 @@ func (m *MockClient) createVolume(w http.ResponseWriter, r *http.Request, mockTi
 	}
 	m.volumes[v.ID] = v
 
-	resp := volumeGetResponse{
-		Volume: v,
-	}
-	respB, err := json.Marshal(resp)
+	respB, err := MarshalVolume(v)
 	if err != nil {
-		panic(fmt.Sprintf("failed to marshal %+v", resp))
+		panic(fmt.Sprintf("failed to marshal %+v", v))
 	}
 	_, err = w.Write(respB)
 	if err != nil {
