@@ -188,8 +188,18 @@ func (m *MockClient) updateVolume(w http.ResponseWriter, r *http.Request, volume
 	vol.UpdatedAt = mocks.UpdatedAt
 	vol.VolumeType = mocks.VolumeType
 	vol.Size = mocks.Size
+	m.volumes[volumeID] = vol
 
 	w.WriteHeader(http.StatusOK)
+
+	respB, err := MarshalVolume(vol)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal %+v", vol))
+	}
+	_, err = w.Write(respB)
+	if err != nil {
+		panic("failed to write body")
+	}
 }
 
 func (m *MockClient) deleteVolume(w http.ResponseWriter, volumeID string) {
