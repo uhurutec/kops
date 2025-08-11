@@ -125,11 +125,12 @@ func (m *MockClient) createFlavor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 
 	flavor := flavors.Flavor{
-		ID:    uuid.New().String(),
-		Name:  create.Flavor.Name,
-		RAM:   create.Flavor.RAM,
-		VCPUs: create.Flavor.VCPUs,
-		Disk:  fi.ValueOf(create.Flavor.Disk),
+		ID:        uuid.New().String(),
+		Name:      create.Flavor.Name,
+		RAM:       create.Flavor.RAM,
+		VCPUs:     create.Flavor.VCPUs,
+		Disk:      fi.ValueOf(create.Flavor.Disk),
+		Ephemeral: fi.ValueOf(create.Flavor.Ephemeral),
 	}
 	m.flavors[flavor.ID] = flavor
 
