@@ -161,7 +161,7 @@ func (m *MockClient) mockServers(extraMocks ExtraMocks) {
 			}
 			m.getServer(w, serverID)
 		case http.MethodPost:
-			m.createServer(w, r)
+			m.createServer(w, r, extraMocks.Create)
 		case http.MethodPut:
 			m.updateServer(w, r, serverID, extraMocks.Update[updateCounter])
 			updateCounter++
@@ -300,7 +300,7 @@ func (m *MockClient) deleteServer(w http.ResponseWriter, serverID string) {
 	}
 }
 
-func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request) {
+func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request, mocks CreateMocks) {
 	var create serverCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&create)
 	if err != nil {
@@ -331,6 +331,8 @@ func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request) {
 			"disk":          flavor.Disk,
 			"ephemeral":     flavor.Ephemeral,
 		},
+		Created: mocks.Created,
+		Updated: mocks.Updated,
 	}
 	securityGroups := make([]map[string]interface{}, len(create.Server.SecurityGroups))
 	for i, groupName := range create.Server.SecurityGroups {
