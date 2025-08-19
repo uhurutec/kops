@@ -33,24 +33,9 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 )
 
-//type JSONRFC3339MilliNoZ gophercloud.JSONRFC3339MilliNoZ
-type JSONRFC3339MilliNoZ time.Time
+type JSONRFC3339MilliNoZ gophercloud.JSONRFC3339MilliNoZ
 
 const RFC3339NoZ = "2006-01-02T15:04:05"
-
-// Time returns the underlying time.Time
-func (l JSONRFC3339MilliNoZ) Time() time.Time {
-	return time.Time(l)
-}
-
-// Ptr returns a *time.Time or nil if the wrapped time is zero
-func (l JSONRFC3339MilliNoZ) Ptr() *time.Time {
-	t := time.Time(l)
-	if t.IsZero() {
-		return nil
-	}
-	return &t
-}
 
 func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
 	t := time.Time(*l)
@@ -58,37 +43,10 @@ func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
-// UnmarshalJSON parses a JSON string (or null) into the wrapped time
-func (l *JSONRFC3339MilliNoZ) UnmarshalJSON(data []byte) error {
-	s := string(data)
-
-	// Handle JSON null → zero value
-	if s == "null" {
-		*l = JSONRFC3339MilliNoZ(time.Time{})
-		return nil
-	}
-
-	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return fmt.Errorf("invalid JSON time format: %s", s)
-	}
-
-	// Strip surrounding quotes
-	s = s[1 : len(s)-1]
-
-	// Parse time
-	t, err := time.Parse(RFC3339NoZ, s)
-	if err != nil {
-		return err
-	}
-
-	*l = JSONRFC3339MilliNoZ(t)
-	return nil
-}
-
 type ExtendedServerType struct {
 	servers.Server
-	Created JSONRFC3339MilliNoZ `json:"created"`
-	Updated JSONRFC3339MilliNoZ `json:"updated"`
+	Created JSONRFC3339MilliNoZ `json:"-"`
+	Updated JSONRFC3339MilliNoZ `json:"-"`
 }
 
 type serverGetResponse struct {
