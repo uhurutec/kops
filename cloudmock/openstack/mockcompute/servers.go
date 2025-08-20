@@ -45,8 +45,9 @@ func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
 
 type ExtendedServerType struct {
 	servers.Server
-	Created JSONRFC3339MilliNoZ `json:"-"`
-	Updated JSONRFC3339MilliNoZ `json:"-"`
+	Created    JSONRFC3339MilliNoZ `json:"-"`
+	Updated    JSONRFC3339MilliNoZ `json:"-"`
+	LaunchedAt JSONRFC3339MilliNoZ `json:"-"`
 }
 
 type serverGetResponse struct {
@@ -220,6 +221,7 @@ func AddMocksReplaceServers(r *servers.Server) (ExtendedServerType, error) {
 		*r,
 		JSONRFC3339MilliNoZ(r.Created),
 		JSONRFC3339MilliNoZ(r.Updated),
+		JSONRFC3339MilliNoZ(r.LaunchedAt),
 	}
 	return newSrv, nil
 }
@@ -331,8 +333,9 @@ func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request, mocks 
 			"disk":          flavor.Disk,
 			"ephemeral":     flavor.Ephemeral,
 		},
-		Created: mocks.Created,
-		Updated: mocks.Updated,
+		Created:    mocks.Created,
+		Updated:    mocks.Updated,
+		LaunchedAt: mocks.LaunchedAt,
 	}
 	securityGroups := make([]map[string]interface{}, len(create.Server.SecurityGroups))
 	for i, groupName := range create.Server.SecurityGroups {

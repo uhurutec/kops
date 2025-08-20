@@ -48,8 +48,9 @@ type MockClient struct {
 }
 
 type CreateMocks struct {
-	Created time.Time
-	Updated time.Time
+	Created    time.Time
+	Updated    time.Time
+	LaunchedAt time.Time
 }
 
 type UpdateMocks struct {
