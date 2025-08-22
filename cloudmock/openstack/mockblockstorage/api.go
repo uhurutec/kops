@@ -33,6 +33,7 @@ type MockClient struct {
 
 	volumes           map[string]cinderv3.Volume
 	availabilityZones map[string]availabilityzones.AvailabilityZone
+	volumeTypes       map[string]VolumeType
 }
 
 type CreateMocks struct {
@@ -57,6 +58,7 @@ func CreateClient(extraMocks ExtraMocks) *MockClient {
 	m.Reset()
 	m.SetupMux()
 	m.mockVolumes(extraMocks)
+	m.mockTypes()
 	m.mockAvailabilityZones()
 	m.Server = httptest.NewServer(m.Mux)
 	return m
@@ -66,4 +68,5 @@ func CreateClient(extraMocks ExtraMocks) *MockClient {
 func (m *MockClient) Reset() {
 	m.volumes = make(map[string]cinderv3.Volume)
 	m.availabilityZones = make(map[string]availabilityzones.AvailabilityZone)
+	m.volumeTypes = make(map[string]VolumeType)
 }
