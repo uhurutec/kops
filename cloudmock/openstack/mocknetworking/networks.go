@@ -51,7 +51,7 @@ type networkCreateRequest struct {
 }
 
 func (m *MockClient) mockNetworks() {
-	re := regexp.MustCompile(`/networks/?`)
+	re := regexp.MustCompile(`/(?:v2\.0/)?networks/?`)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -80,6 +80,8 @@ func (m *MockClient) mockNetworks() {
 	}
 	m.Mux.HandleFunc("/networks/", handler)
 	m.Mux.HandleFunc("/networks", handler)
+	m.Mux.HandleFunc("/v2.0/networks/", handler)
+	m.Mux.HandleFunc("/v2.0/networks", handler)
 }
 
 func (m *MockClient) listNetworks(w http.ResponseWriter, vals url.Values) {

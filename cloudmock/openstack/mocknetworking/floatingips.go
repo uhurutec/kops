@@ -47,7 +47,7 @@ type floatingIPGetResponse struct {
 }
 
 func (m *MockClient) mockFloatingIPs() {
-	re := regexp.MustCompile(`/floatingips/?`)
+	re := regexp.MustCompile(`/(?:v2\.0/)?floatingips/?`)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -70,6 +70,8 @@ func (m *MockClient) mockFloatingIPs() {
 	}
 	m.Mux.HandleFunc("/floatingips/", handler)
 	m.Mux.HandleFunc("/floatingips", handler)
+	m.Mux.HandleFunc("/v2.0/floatingips/", handler)
+	m.Mux.HandleFunc("/v2.0/floatingips", handler)
 }
 
 func (m *MockClient) listFloatingIPs(w http.ResponseWriter, vals url.Values) {

@@ -35,7 +35,7 @@ type imageGetResponse struct {
 }
 
 func (m *MockClient) mockImages() {
-	re := regexp.MustCompile(`/images/?`)
+	re := regexp.MustCompile(`(?:/v2)?/images/?`)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -59,6 +59,8 @@ func (m *MockClient) mockImages() {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
+	m.Mux.HandleFunc("/v2/images/", handler)
+	m.Mux.HandleFunc("/v2/images", handler)
 	m.Mux.HandleFunc("/images/", handler)
 	m.Mux.HandleFunc("/images", handler)
 }
