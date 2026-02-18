@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 	"k8s.io/kops/upup/pkg/fi"
@@ -32,16 +33,37 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 )
 
+type JSONRFC3339MilliNoZ gophercloud.JSONRFC3339MilliNoZ
+
+const RFC3339NoZ = "2006-01-02T15:04:05"
+
+func (l *JSONRFC3339MilliNoZ) MarshalJSON() ([]byte, error) {
+	t := time.Time(*l)
+	s := `"` + t.Format(RFC3339NoZ) + `"`
+	return []byte(s), nil
+}
+
+type ExtendedServerType struct {
+	servers.Server
+	Created    JSONRFC3339MilliNoZ `json:"-"`
+	Updated    JSONRFC3339MilliNoZ `json:"-"`
+	LaunchedAt JSONRFC3339MilliNoZ `json:"OS-SRV-USG:launched_at"`
+}
+
 type serverGetResponse struct {
-	Server servers.Server `json:"server"`
+	Server ExtendedServerType `json:"server"`
 }
 
 type serverListResponse struct {
-	Servers []servers.Server `json:"servers"`
+	Servers []ExtendedServerType `json:"servers"`
 }
 
 type serverCreateRequest struct {
 	Server Server `json:"server"`
+}
+
+type serverUpdateRequest struct {
+	Server servers.UpdateOpts `json:"server"`
 }
 
 // CreateOpts specifies server creation parameters.
@@ -121,8 +143,9 @@ type Networks struct {
 	Port string `json:"port,omitempty"`
 }
 
-func (m *MockClient) mockServers() {
+func (m *MockClient) mockServers(extraMocks ExtraMocks) {
 	re := regexp.MustCompile(`/servers/?`)
+	updateCounter := 0
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		m.mutex.Lock()
@@ -139,7 +162,10 @@ func (m *MockClient) mockServers() {
 			}
 			m.getServer(w, serverID)
 		case http.MethodPost:
-			m.createServer(w, r)
+			m.createServer(w, r, extraMocks.Create)
+		case http.MethodPut:
+			m.updateServer(w, r, serverID, extraMocks.Update[updateCounter])
+			updateCounter++
 		case http.MethodDelete:
 			m.deleteServer(w, serverID)
 		default:
@@ -150,16 +176,63 @@ func (m *MockClient) mockServers() {
 	m.Mux.HandleFunc("/servers", handler)
 }
 
+func MarshalServer(server servers.Server) ([]byte, error) {
+	var res []byte
+	var newServer serverGetResponse
+
+	newSrv, err := AddMocksReplaceServers(&server)
+	if err != nil {
+		return nil, err
+	}
+
+	newServer.Server = newSrv
+
+	res, err = json.Marshal(&newServer)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func MarshalServers(servers []servers.Server) ([]byte, error) {
+	var res []byte
+	var newServers serverListResponse
+
+	for _, v := range servers {
+		newServer, err := AddMocksReplaceServers(&v)
+		if err != nil {
+			return nil, err
+		}
+		newServers.Servers = append(newServers.Servers, newServer)
+	}
+
+	res, err := json.Marshal(newServers)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func AddMocksReplaceServers(r *servers.Server) (ExtendedServerType, error) {
+
+	newSrv := ExtendedServerType{
+		*r,
+		JSONRFC3339MilliNoZ(r.Created),
+		JSONRFC3339MilliNoZ(r.Updated),
+		JSONRFC3339MilliNoZ(r.LaunchedAt),
+	}
+	return newSrv, nil
+}
+
 func (m *MockClient) getServer(w http.ResponseWriter, serverID string) {
 	if server, ok := m.servers[serverID]; ok {
-		getResponse := serverGetResponse{
-			Server: server,
-		}
-		jsonResponse, err := json.Marshal(getResponse)
+		resp8, err := MarshalServer(server)
 		if err != nil {
-			panic(fmt.Sprintf("failed to marshal %+v", getResponse))
+			panic(fmt.Sprintf("failed to marshal %+v", server))
 		}
-		_, err = w.Write(jsonResponse)
+		_, err = w.Write(resp8)
 		if err != nil {
 			panic("failed to write body")
 		}
@@ -176,12 +249,43 @@ func (m *MockClient) listServers(w http.ResponseWriter, vals url.Values) {
 			matched = append(matched, server)
 		}
 	}
-	resp := serverListResponse{
-		Servers: matched,
-	}
-	respB, err := json.Marshal(resp)
+	respB, err := MarshalServers(matched)
 	if err != nil {
-		panic(fmt.Sprintf("failed to marshal %+v", resp))
+		panic(fmt.Sprintf("failed to marshal %+v", matched))
+	}
+	_, err = w.Write(respB)
+	if err != nil {
+		panic("failed to write body")
+	}
+}
+
+func (m *MockClient) updateServer(w http.ResponseWriter, r *http.Request, serverID string, mocks UpdateMocks) {
+	if _, ok := m.servers[serverID]; !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var update serverUpdateRequest
+	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		panic("error decoding update server request")
+	}
+	server := m.servers[serverID]
+	server.Name = update.Server.Name
+	server.Updated = mocks.Updated
+	server.Flavor["name"] = mocks.Flavor.Name
+	server.Flavor["original_name"] = mocks.Flavor.Name
+	server.Flavor["ram"] = mocks.Flavor.RAM
+	server.Flavor["vcpus"] = mocks.Flavor.VCPUs
+	server.Flavor["disk"] = mocks.Flavor.Disk
+	server.Flavor["ephemeral"] = mocks.Flavor.Ephemeral
+
+	m.servers[serverID] = server
+
+	w.WriteHeader(http.StatusOK)
+
+	respB, err := MarshalServer(server)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal %+v", server))
 	}
 	_, err = w.Write(respB)
 	if err != nil {
@@ -198,7 +302,7 @@ func (m *MockClient) deleteServer(w http.ResponseWriter, serverID string) {
 	}
 }
 
-func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request) {
+func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request, mocks CreateMocks) {
 	var create serverCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&create)
 	if err != nil {
@@ -229,6 +333,9 @@ func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request) {
 			"disk":          flavor.Disk,
 			"ephemeral":     flavor.Ephemeral,
 		},
+		Created:    mocks.Created,
+		Updated:    mocks.Updated,
+		LaunchedAt: mocks.LaunchedAt,
 	}
 	securityGroups := make([]map[string]interface{}, len(create.Server.SecurityGroups))
 	for i, groupName := range create.Server.SecurityGroups {
@@ -252,12 +359,9 @@ func (m *MockClient) createServer(w http.ResponseWriter, r *http.Request) {
 
 	m.servers[server.ID] = server
 
-	resp := serverGetResponse{
-		Server: server,
-	}
-	respB, err := json.Marshal(resp)
+	respB, err := MarshalServer(server)
 	if err != nil {
-		panic(fmt.Sprintf("failed to marshal %+v", resp))
+		panic(fmt.Sprintf("failed to marshal %+v", server))
 	}
 	_, err = w.Write(respB)
 	if err != nil {

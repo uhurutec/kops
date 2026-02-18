@@ -311,7 +311,7 @@ func SetupMockOpenstack() *openstack.MockCloud {
 
 	c.MockLBClient = mockloadbalancer.CreateClient()
 
-	c.MockNovaClient = mockcompute.CreateClient(c.MockNeutronClient.ServiceClient())
+	c.MockNovaClient = mockcompute.CreateClient(c.MockNeutronClient.ServiceClient(), mockcompute.ExtraMocks{})
 
 	c.MockDNSClient = mockdns.CreateClient()
 

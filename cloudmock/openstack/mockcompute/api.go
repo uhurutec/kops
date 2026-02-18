@@ -19,6 +19,7 @@ package mockcompute
 import (
 	"net/http/httptest"
 	"sync"
+	"time"
 
 	"github.com/gophercloud/gophercloud/v2"
 
@@ -43,13 +44,29 @@ type MockClient struct {
 	networkClient *gophercloud.ServiceClient
 }
 
+type CreateMocks struct {
+	Created    time.Time
+	Updated    time.Time
+	LaunchedAt time.Time
+}
+
+type UpdateMocks struct {
+	Updated time.Time
+	Flavor  flavors.Flavor
+}
+
+type ExtraMocks struct {
+	Create CreateMocks
+	Update []UpdateMocks
+}
+
 // CreateClient will create a new mock networking client
-func CreateClient(networkClient *gophercloud.ServiceClient) *MockClient {
+func CreateClient(networkClient *gophercloud.ServiceClient, extraMocks ExtraMocks) *MockClient {
 	m := &MockClient{}
 	m.SetupMux()
 	m.Reset()
 	m.mockServerGroups()
-	m.mockServers()
+	m.mockServers(extraMocks)
 	m.mockKeyPairs()
 	m.mockFlavors()
 	m.mockInstanceActions()
